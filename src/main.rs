@@ -1,4 +1,7 @@
-use serenity::{async_trait, client::{Client, EventHandler, Context}, http::AttachmentType, model::prelude::{Message, Ready, Embed}};
+mod rova;
+
+use rova::{Region, Rova};
+use serenity::{async_trait, client::{Client, EventHandler, Context}, futures::TryFutureExt, http::AttachmentType, model::prelude::{Message, Ready}};
 use std::{
     path::Path,
     fs
@@ -16,7 +19,7 @@ struct Handler {
 }
 
 impl Handler {
-    async fn info(&self, _ctx: Context, message: &Message, args: Vec<&str>) {
+    async fn info(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
         let repsonse = message.channel_id.send_message(&_ctx.http, |m| {
             m.embed(|e| {
                 e.title("Rova");
@@ -40,12 +43,21 @@ impl Handler {
         }
     }
 
-    async fn play(&self, _ctx: Context, message: &Message, args: Vec<&str>) {
-        println!("play command");
+    async fn station(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
+        println!("station command");
+
+        if let Some(station) = args {
+            // select station
+            return
+        }
     }
 
-    async fn station(&self, _ctx: Context, message: &Message, args: Vec<&str>) {
-        println!("station command");
+    async fn playing(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
+        println!("playing command");
+
+        if let Some(station) = args {
+
+        }
     }
 }
 
@@ -64,14 +76,12 @@ impl EventHandler for Handler {
         };
 
         println!("found prefix");
-        let x = msg[2..0];
 
-        let args = match msg[2..0] {
-            Some(args) => args,
-            _ => vec![]
+        let args = if msg.len() >= 3 {
+            Some(msg[2..].to_vec())
+        } else {
+            None
         };
-
-
 
         let cmd: &str = match msg.get(1) {
             Some(cmd) => cmd,
@@ -82,8 +92,8 @@ impl EventHandler for Handler {
         };
 
         match cmd {
-            "play" => self.play(_ctx, &message, args).await,
             "station" => self.station(_ctx, &message, args).await,
+            "playing" => self.playing(_ctx, &message, args).await,
             _ => {
                 self.info(_ctx, &message, args).await;
                 return
@@ -99,7 +109,10 @@ async fn main() {
     if !config_path.exists() {
         println!("no config exists - please create one at config.toml");
         return
-    }Vct("unable to parse config");
+    }
+    
+    let config_file = fs::read_to_string("config.toml").expect("unable to read config file");
+    let config: Config = toml::from_str(&config_file).expect("unable to parse config");
     
     // let config: Config = toml::from_str
     let mut client = Client::builder(&config.token)
