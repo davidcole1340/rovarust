@@ -37,8 +37,48 @@ impl Handler {
     async fn station(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
         println!("station command");
 
-        if let Some(station) = args {
+        if let Some(args) = args {
+            let station_id = args.first().unwrap();
+            let guild = message.guild(&_ctx.cache).await.unwrap();
             // select station
+            match self.fetch_station_by_id(station_id) {
+                Some(station) => match guild.voice_states.get(&message.author.id).and_then(|state| state.channel_id) {
+                    Some(channel_id) => {
+                        let songbird = self.songbird(&_ctx).await;
+
+                        // join channel
+                        let (handler, result) = songbird.join(guild.id, channel_id).await;
+                        
+                        if let Err(e) = result {
+                            println!("error joining channel: {:?}", e);
+                            let _ = message.reply(&_ctx, format!("Error joining voice channel: {}", e.to_string())).await;
+                            return
+                        }
+
+                        let source = match songbird::ffmpeg(&station.high_quality_stream_url).await {
+                            Ok(source) => source,
+                            Err(e) => {
+                                println!("error starting ffmpeg: {:?}", e);
+                                return
+                            }
+                        };
+
+                        handler.lock().await.play_source(source);
+                    },
+                    None => {
+                        let resp = message.channel_id.send_message(&_ctx.http, |m| {
+                            m.content("Join a voice channel and try again.");
+                            m
+                        }).await;
+                    }
+                },
+                None => {
+                    let _ = message.channel_id.send_message(&_ctx.http, |m| {
+                        m.content("Could not find the given station.");
+                        m
+                    }).await;
+                }
+            }
             return
         }
 
@@ -49,7 +89,6 @@ impl Handler {
                 m.embed(|e| {
                     e.title("Rova Stations");
                     e.description("Stations available on Rova");
-
                     for station in chunk {
                         e.field(
                             format!("{} - {}", station.brand_name, station.sort_name), 
@@ -57,7 +96,6 @@ impl Handler {
                           false
                         );
                     }
-
                     e
                 });
                 m
@@ -151,6 +189,10 @@ impl Handler {
         }
         None
     }
+
+    async fn songbird(&self, ctx: &Context) -> Arc<songbird::Songbird> {
+        songbird::get(ctx).await.unwrap().clone()
+    }
 }
 
 #[async_trait]
@@ -166,8 +208,6 @@ impl EventHandler for Handler {
             Some(prefix) if self.config.prefix.eq(prefix) => (),
             _ => return
         };
-
-        println!("found prefix");
 
         let args = if msg.len() >= 3 {
             Some(msg[2..].to_vec())

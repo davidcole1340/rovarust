@@ -6,6 +6,7 @@ use bot::Handler;
 use config::Config;
 use rova::Rova;
 use serenity::client::Client;
+use songbird::SerenityInit;
 use tokio::{time::sleep, sync::Mutex};
 use std::{sync::Arc, time::Duration};
 
@@ -51,6 +52,7 @@ async fn main() {
 
     let mut client = Client::builder(&token)
         .event_handler(handler)
+        .register_songbird()
         .await
         .expect("error creating client");
 
