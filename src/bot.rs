@@ -1,6 +1,6 @@
 use std::{path::Path, sync::{Arc}};
 use serenity::{async_trait, client::{Context, EventHandler}, http::AttachmentType, model::{channel::Message, prelude::Ready}};
-use crate::{config::Config, rova};
+use crate::{config::Config, rova, rova::{Station}};
 use tokio::sync::Mutex;
 
 pub struct Handler {
@@ -71,14 +71,52 @@ impl Handler {
 
     async fn playing(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
         println!("playing command");
+        let on_air = self.on_air.lock().await;
 
-        if let Some(station) = args {
+        if let Some(args) = args {
+            let station_id = args.first().unwrap();
+            for station in on_air.iter() {
+                if station.id.eq(station_id) {
+                    let meta = self.fetch_station_by_id(station_id);
 
+                    let resp = message.channel_id.send_message(&_ctx.http, |m| {
+                        m.embed(|e| {
+                            e.title(match meta {
+                                Some(station) => station.brand_name.clone(),
+                                None => station_id.to_string()
+                            });
+                            
+                            for song in station.now_playing.iter() {
+                                e.field(
+                                    song.title.clone(),
+                                    match &song.artist {
+                                        Some(artist) => artist.to_string(),
+                                        None => "No Artist".to_string()
+                                    },
+                                    false
+                                );
+                            }
+                            e
+                        });
+                        m
+                    }).await;
+
+                    if let Err(e) = resp {
+                        println!("error sending playing response: {:?}", e);
+                    }
+
+                    return
+                }
+            }
+            
+            let _ = message.channel_id.send_message(&_ctx.http, |m| {
+                m.content("Could not find the given channel.");
+                m
+            }).await;
+            return
         }
 
-        let read_guard = self.on_air.lock().await;
-
-        for chunk in read_guard.chunks(25) {
+        for chunk in on_air.chunks(25) {
             let resp = message.channel_id.send_message( &_ctx.http, |m| {
                 m.embed(|e| {
                     e.title("Rova Playing");
@@ -105,6 +143,13 @@ impl Handler {
                 println!("error sending playing chunk: {:?}", e);
             }
         }
+    }
+
+    fn fetch_station_by_id(&self, id: &str) -> Option<&Station> {
+        for station in self.stations.iter() {
+            if station.id.eq(id) { return Some(station) }
+        }
+        None
     }
 }
 
