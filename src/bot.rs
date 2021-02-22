@@ -131,6 +131,12 @@ impl Handler {
                                 Some(station) => station.brand_name.clone(),
                                 None => station_id.to_string()
                             });
+
+                            if let Some(status) = station.on_air.first() {
+                                e.description(status.title.clone());
+                                e.image(status.image_url.clone());
+                                e.thumbnail(status.thumbnail_url.clone());
+                            }
                             
                             for song in station.now_playing.iter() {
                                 e.field(
