@@ -23,7 +23,7 @@ pub struct NowPlaying {
     pub status: String,
     pub image_url: String,
     pub duration: String,
-    pub artist: String
+    pub artist: Option<String>
 }
 
 #[derive(Deserialize)]
@@ -31,13 +31,12 @@ pub struct NowPlaying {
 pub struct OnAirNow {
     pub title: String,
     pub status: String,
-    pub image_url: String,
     pub duration: String,
-    pub artist: String,
     pub start_time: String,
     pub end_time: String,
     pub show_id: String,
     pub display_time: String,
+    pub image_url: String,
     pub thumbnail_url: String
 }
 
