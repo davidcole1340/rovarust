@@ -21,7 +21,8 @@ impl Handler {
                     (format!("{} station [station]", self.config.prefix), "selects a station", false),
                     (format!("{} playing", self.config.prefix), "outputs the current song on the playing station", false),
                     (format!("{} playing [station]", self.config.prefix), "outputs the current song on a given station", false),
-                    (format!("{} invite", self.config.prefix), "outputs an invite link for the bot", false)
+                    (format!("{} invite", self.config.prefix), "outputs an invite link for the bot", false),
+                    (format!("{} leave", self.config.prefix), "makes the bot leave the channel, if you are in it", false)
                 ]);
                 e
             });
@@ -183,6 +184,19 @@ impl Handler {
         }
     }
 
+    async fn leave(&self, _ctx: Context, message: &Message) {
+        let guild = message.guild(&_ctx.cache).await.unwrap();
+        let songbird = self.songbird(&_ctx).await;
+
+        if songbird.get(guild.id).is_some() {
+            let result = songbird.remove(guild.id).await;
+            
+            if let Err(e) = result {
+                println!("error leaving channel: {}", e);
+            }
+        }
+    }
+
     fn fetch_station_by_id(&self, id: &str) -> Option<&Station> {
         for station in self.stations.iter() {
             if station.id.eq(id) { return Some(station) }
@@ -226,6 +240,7 @@ impl EventHandler for Handler {
         match cmd {
             "station" => self.station(_ctx, &message, args).await,
             "playing" => self.playing(_ctx, &message, args).await,
+            "leave" => self.leave(_ctx, &message).await,
             _ => {
                 self.info(_ctx, &message, args).await;
                 return
