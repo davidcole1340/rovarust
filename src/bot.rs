@@ -66,7 +66,7 @@ impl Handler {
                         handler.lock().await.play_source(source);
                     },
                     None => {
-                        let resp = message.channel_id.send_message(&_ctx.http, |m| {
+                        let _ = message.channel_id.send_message(&_ctx.http, |m| {
                             m.content("Join a voice channel and try again.");
                             m
                         }).await;
