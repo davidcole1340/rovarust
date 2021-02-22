@@ -47,14 +47,24 @@ impl Handler {
                     Some(channel_id) => {
                         let songbird = self.songbird(&_ctx).await;
 
-                        // join channel
-                        let (handler, result) = songbird.join(guild.id, channel_id).await;
-                        
-                        if let Err(e) = result {
-                            println!("error joining channel: {:?}", e);
-                            let _ = message.reply(&_ctx, format!("Error joining voice channel: {}", e.to_string())).await;
-                            return
-                        }
+                        let channel = match songbird.get(guild.id) {
+                            Some(channel) => {
+                                channel.lock().await.stop();
+                                channel
+                            },
+                            None => {
+                                // join channel
+                                let (handler, result) = songbird.join(guild.id, channel_id).await;
+                                
+                                if let Err(e) = result {
+                                    println!("error joining channel: {:?}", e);
+                                    let _ = message.reply(&_ctx, format!("Error joining voice channel: {}", e.to_string())).await;
+                                    return
+                                }
+
+                                handler
+                            }
+                        };
 
                         let source = match songbird::ffmpeg(&station.high_quality_stream_url).await {
                             Ok(source) => source,
@@ -64,7 +74,7 @@ impl Handler {
                             }
                         };
 
-                        handler.lock().await.play_source(source);
+                        channel.lock().await.play_source(source);
                     },
                     None => {
                         let _ = message.channel_id.send_message(&_ctx.http, |m| {
