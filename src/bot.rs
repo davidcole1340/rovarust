@@ -36,8 +36,6 @@ impl Handler {
     }
 
     async fn station(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
-        println!("station command");
-
         if let Some(args) = args {
             let station_id = args.first().unwrap();
             let guild = message.guild(&_ctx.cache).await.unwrap();
@@ -119,7 +117,6 @@ impl Handler {
     }
 
     async fn playing(&self, _ctx: Context, message: &Message, args: Option<Vec<&str>>) {
-        println!("playing command");
         let on_air = self.on_air.lock().await;
 
         if let Some(args) = args {
@@ -251,6 +248,9 @@ impl EventHandler for Handler {
             "station" => self.station(_ctx, &message, args).await,
             "playing" => self.playing(_ctx, &message, args).await,
             "leave" => self.leave(_ctx, &message).await,
+            "invite" => {
+                let _ = message.reply(&_ctx.http, format!("https://discordapp.com/oauth2/authorize?client_id={}&scope=bot&permissions=36702208", self.config.client_id)).await;
+            },
             _ => {
                 self.info(_ctx, &message, args).await;
                 return
