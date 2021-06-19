@@ -13,3 +13,6 @@ tokio = { version = "1.2", features = ["macros", "rt", "rt-multi-thread"] }
 toml = "0.5"
 serde = "1.0"
 reqwest = "0.11"
+
+[patch.crates-io]
+serenity = { git = "https://github.com/serenity-rs/serenity" }
